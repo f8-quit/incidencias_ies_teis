@@ -110,7 +110,6 @@ incidencias_ies_teis.conf
 ```bash
 ls /etc/apache2/
 ```
-````markdown
 14. Configuración del nombre local para acceder desde el navegador.
 
 Para poder acceder a la página web mediante:
@@ -146,7 +145,267 @@ ff02::2 ip6-allrouters
 
 De esta forma, el nombre `incidencias_ies_teis` queda asociado a la dirección local `127.0.0.1`.
 
+
+15. Instalar MySQL Server
+
+```
+sudo apt install mysql-server
 ```
 
-Solo una precisión técnica: para que funcione correctamente, el `ServerName` del VirtualHost de Apache debería coincidir también con `incidencias_ies_teis`.
+16. Acceso a MySQL como administrador:
+
+```bash
+sudo mysql
 ```
+
+Al acceder correctamente aparece el prompt de MySQL:
+
+```text
+mysql>
+```
+
+17. Creación de la base de datos `incidencias`:
+```sql
+CREATE DATABASE incidencias;
+```
+
+Resultado:
+
+```text
+Query OK, 1 row affected
+```
+
+18. Creación del usuario `incidencias` para conexiones desde `localhost`:
+
+```sql
+CREATE USER 'incidencias'@'localhost' IDENTIFIED BY 'incidencias';
+```
+
+Resultado:
+
+```text
+Query OK, 0 rows affected
+```
+
+Durante la práctica se creó por error un usuario llamado `f8-quit`:
+
+```sql
+CREATE USER "f8-quit";
+```
+
+Como no era el usuario correcto, se eliminó:
+
+```sql
+DROP USER "f8-quit";
+```
+
+19. Asignación de todos los privilegios de la base de datos `incidencias` al usuario creado:
+
+```sql
+GRANT ALL PRIVILEGES ON incidencias.* TO 'incidencias'@'localhost';
+```
+
+Resultado:
+
+```text
+Query OK, 0 rows affected
+```
+
+20. Aplicación de los cambios en los privilegios:
+
+```sql
+FLUSH PRIVILEGES;
+```
+
+Resultado:
+
+```text
+Query OK, 0 rows affected
+```
+
+21. Comprobación de que la base de datos se creó correctamente:
+
+```sql
+SHOW DATABASES;
+```
+
+Resultado:
+
+```text
++--------------------+
+| Database           |
++--------------------+
+| incidencias        |
+| information_schema |
+| mysql              |
+| performance_schema |
+| sys                |
++--------------------+
+```
+
+Inicialmente se probó por error:
+
+```sql
+SHOW DATABASE;
+```
+
+pero MySQL devolvió un error de sintaxis, ya que el comando correcto es `SHOW DATABASES;`.
+
+22. Comprobación de los usuarios existentes en MySQL:
+
+```sql
+SELECT user, host FROM mysql.user;
+```
+
+Resultado:
+
+```text
++------------------+-----------+
+| user             | host      |
++------------------+-----------+
+| debian-sys-maint | localhost |
+| incidencias      | localhost |
+| mysql.infoschema | localhost |
+| mysql.session    | localhost |
+| mysql.sys        | localhost |
+| root             | localhost |
++------------------+-----------+
+```
+
+De esta forma se comprueba que existe el usuario `incidencias@localhost`.
+
+Durante la comprobación también se probaron:
+
+```sql
+SHOW USERS;
+SHOW USER;
+```
+
+pero ambos comandos devolvieron un error de sintaxis.
+
+23. Comprobación de los privilegios del usuario actual:
+
+```sql
+SHOW GRANTS;
+```
+
+Este comando muestra los privilegios del usuario con el que está abierta la sesión. En este caso, `root@localhost`.
+
+24. Comprobación de los privilegios asignados al usuario `incidencias`:
+
+```sql
+SHOW GRANTS FOR 'incidencias'@'localhost';
+```
+
+Resultado:
+
+```text
++----------------------------------------------------------------------+
+| Grants for incidencias@localhost                                     |
++----------------------------------------------------------------------+
+| GRANT USAGE ON *.* TO `incidencias`@`localhost`                      |
+| GRANT ALL PRIVILEGES ON `incidencias`.* TO `incidencias`@`localhost` |
++----------------------------------------------------------------------+
+```
+
+Con esta comprobación se verifica que el usuario `incidencias` tiene todos los privilegios sobre la base de datos `incidencias`.
+
+Durante la primera comprobación se escribió por error `incidecias` en lugar de `incidencias`:
+
+```sql
+SHOW GRANTS FOR 'incidecias'@'localhost';
+```
+
+MySQL indicó que no existían privilegios definidos para ese usuario porque el nombre estaba mal escrito.
+
+25. Selección de la base de datos `incidencias`:
+
+```sql
+USE incidencias;
+```
+
+Resultado:
+
+```text
+Database changed
+```
+
+Con este comando se selecciona la base de datos `incidencias` para trabajar sobre ella.
+
+26. Creación de la tabla `registro`:
+
+```sql
+CREATE TABLE registro (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    aula VARCHAR(30),
+    descripcion TEXT,
+    usuario VARCHAR(20),
+    estado VARCHAR(30)
+);
+```
+
+Resultado:
+
+```text
+Query OK, 0 rows affected
+```
+
+La tabla `registro` queda formada por los siguientes campos:
+
+| Campo | Tipo | Descripción |
+|---|---|---|
+| `id` | `INT` | Identificador único de cada registro. Se incrementa automáticamente y actúa como clave primaria. |
+| `aula` | `VARCHAR(30)` | Almacena el aula relacionada con la incidencia. |
+| `descripcion` | `TEXT` | Almacena la descripción de la incidencia. |
+| `usuario` | `VARCHAR(20)` | Almacena el usuario relacionado con la incidencia. |
+| `estado` | `VARCHAR(30)` | Almacena el estado actual de la incidencia. |
+
+27. Inserción de datos de prueba en la tabla `registro`:
+
+Se añaden dos incidencias para comprobar que la tabla funciona correctamente.
+
+Primera incidencia:
+
+```sql
+INSERT INTO registro (aula, descripcion, usuario, estado)
+VALUES ('Taller1', 'PC 24 no arranca', 'ifpereira', 'ABIERTA');
+```
+
+Resultado:
+
+```text
+Query OK, 1 row affected
+```
+
+Segunda incidencia:
+
+```sql
+INSERT INTO registro (aula, descripcion, usuario, estado)
+VALUES ('Taller2', 'Monitor 2 no funciona', 'isfariña', 'ABIERTA');
+```
+
+Resultado:
+
+```text
+Query OK, 1 row affected
+```
+
+28. Comprobación de los registros almacenados:
+
+```sql
+SELECT * FROM registro;
+```
+
+Resultado:
+
+```text
++----+---------+-----------------------+-----------+---------+
+| id | aula    | descripcion           | usuario   | estado  |
++----+---------+-----------------------+-----------+---------+
+|  1 | Taller1 | PC 24 no arranca      | ifpereira | ABIERTA |
+|  2 | Taller2 | Monitor 2 no funciona | isfariña  | ABIERTA |
++----+---------+-----------------------+-----------+---------+
+2 rows in set
+```
+
+Con esta consulta se comprueba que los dos registros se han insertado correctamente y que el campo `id` se ha generado automáticamente mediante `AUTO_INCREMENT`.
