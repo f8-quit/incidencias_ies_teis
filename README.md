@@ -409,3 +409,238 @@ Resultado:
 ```
 
 Con esta consulta se comprueba que los dos registros se han insertado correctamente y que el campo `id` se ha generado automáticamente mediante `AUTO_INCREMENT`.
+
+28. Instalación de Python y de las herramientas necesarias para crear entornos virtuales:
+
+```bash
+sudo apt install python3 python3-pip python3-venv -y
+```
+
+29. Creación del entorno virtual de Python:
+
+Desde el directorio del proyecto se crea un entorno virtual llamado `venv`:
+
+```bash
+python3 -m venv venv
+```
+
+Después se activa:
+
+```bash
+source /var/www/incidencias_ies_teis/venv/bin/activate
+```
+
+Al activar el entorno virtual, las dependencias de Python que se instalen quedarán asociadas al proyecto.
+
+30. Instalación de Flask y del conector de MySQL para Python:
+
+```bash
+pip install flask
+```
+
+```bash
+pip install mysql-connector-python
+```
+
+Para comprobar los paquetes instalados:
+
+```bash
+pip list
+```
+
+Se guardan las dependencias del proyecto en el archivo `requirements.txt`:
+
+```bash
+pip freeze > requirements.txt
+```
+
+31. Creación del archivo `.gitignore`:
+
+Se crea un archivo llamado `.gitignore` para evitar subir al repositorio archivos que no deben formar parte del proyecto.
+
+Contenido:
+
+```gitignore
+venv/
+**/__pycache__/
+*.pyc
+.env
+```
+
+32. Rutina de trabajo con Flask:
+
+Cada vez que se vaya a trabajar con la aplicación:
+
+```bash
+cd /var/www/incidencias_ies_teis
+source venv/bin/activate
+python app.py
+```
+
+El comando:
+
+```bash
+python app.py
+```
+
+lanza la aplicación Flask.
+
+Al terminar la ejecución se detiene con:
+
+```text
+Ctrl + C
+```
+
+Después se sale del entorno virtual:
+
+```bash
+deactivate
+```
+
+33. Creación de la primera aplicación Python/Flask:
+
+Se crea el archivo `app.py` con el siguiente contenido:
+
+```python
+from flask import Flask
+
+app = Flask(__name__)
+
+@app.route("/")
+def inicio():
+    return "<h1>Incidencias IES Teis</h1>"
+
+if __name__ == "__main__":
+    app.run(debug=True)
+```
+
+La ruta `/` devuelve directamente un encabezado HTML desde Flask.
+
+34. Activación de los módulos de Apache necesarios:
+
+```bash
+sudo a2enmod proxy
+sudo a2enmod proxy_http
+sudo systemctl restart apache2
+```
+
+Con esto quedan activados los módulos `proxy` y `proxy_http` de Apache.
+
+35. Migración del formulario HTML a Python/Flask:
+
+Se crea una carpeta llamada `templates` y se mueve dentro de ella el archivo `index.html`.
+
+La estructura del proyecto pasa a incluir:
+
+```text
+incidencias_ies_teis/
+├── app.py
+├── requirements.txt
+├── venv/
+└── templates/
+    └── index.html
+```
+
+Se modifica `app.py` para que Flask devuelva el formulario utilizando `render_template`:
+
+```python
+from flask import Flask, render_template
+
+app = Flask(__name__)
+
+@app.route("/")
+def inicio():
+    return render_template("index.html")
+
+if __name__ == "__main__":
+    app.run(debug=True)
+```
+
+36. Comprobación de que Flask devuelve el formulario:
+
+Se abre en el navegador:
+
+```text
+http://incidencias_ies_teis:5000/
+```
+
+Al acceder a esta dirección se comprueba que el formulario `index.html` es devuelto por Flask.
+
+37. Preparación del formulario para enviar los datos a Flask:
+
+El formulario debe enviar los datos mediante `POST` a la ruta `/incidencia`:
+
+```html
+<form action="/incidencia" method="post">
+```
+
+Los valores se identifican mediante el atributo `name` de cada campo del formulario:
+
+```text
+nombre
+email
+tipo
+prioridad
+descripcion
+```
+
+38. Recepción de los datos del formulario:
+
+Se añade `request` a las importaciones de Flask:
+
+```python
+from flask import Flask, render_template, request
+```
+
+Después se añade una nueva ruta en `app.py` para recibir los datos enviados por el formulario:
+
+```python
+@app.route("/incidencia", methods=["POST"])
+def crear_incidencia():
+    nombre = request.form["nombre"]
+    email = request.form["email"]
+    tipo = request.form["tipo"]
+    prioridad = request.form["prioridad"]
+    descripcion = request.form["descripcion"]
+
+    print("Nombre: " + nombre)
+    print("Email: " + email)
+    print("Tipo: " + tipo)
+    print("Prioridad: " + prioridad)
+    print("Descripción: " + descripcion)
+
+    return "Incidencia recibida"
+```
+
+El archivo `app.py` queda de la siguiente forma:
+
+```python
+from flask import Flask, render_template, request
+
+app = Flask(__name__)
+
+@app.route("/")
+def inicio():
+    return render_template("index.html")
+
+@app.route("/incidencia", methods=["POST"])
+def crear_incidencia():
+    nombre = request.form["nombre"]
+    email = request.form["email"]
+    tipo = request.form["tipo"]
+    prioridad = request.form["prioridad"]
+    descripcion = request.form["descripcion"]
+
+    print("Nombre: " + nombre)
+    print("Email: " + email)
+    print("Tipo: " + tipo)
+    print("Prioridad: " + prioridad)
+    print("Descripción: " + descripcion)
+
+    return "Incidencia recibida"
+
+if __name__ == "__main__":
+    app.run(debug=True)
+```
+
+Cuando el formulario realiza una petición `POST` a `/incidencia`, Flask recoge los valores mediante `request.form` y los muestra en la terminal con `print()`.
