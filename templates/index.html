@@ -13,13 +13,23 @@
 
     <form action="/incidencia" method="post">
 
-        <label for="nombre">Nombre:</label><br>
-        <input type="text" id="nombre" name="nombre" required>
+        <label for="usuario">Usuario:</label><br>
+        <input type="text" id="usuario" name="usuario" required>
 
         <br><br>
 
         <label for="email">Correo electrónico:</label><br>
         <input type="email" id="email" name="email" required>
+
+        <br><br>
+
+        <label for="tipo">Aula:</label><br>
+        <select id="aula" name="aula">
+            <option value="taller1">Taller1</option>
+            <option value="taller2">Taller2</option>
+            <option value="taller3">Taller3</option>
+            <option value="taller4">Taller4</option>
+        </select>
 
         <br><br>
 
