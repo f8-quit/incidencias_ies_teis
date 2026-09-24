@@ -644,3 +644,382 @@ if __name__ == "__main__":
 ```
 
 Cuando el formulario realiza una petición `POST` a `/incidencia`, Flask recoge los valores mediante `request.form` y los muestra en la terminal con `print()`.
+
+39. Mejora de la respuesta mostrada después de enviar una incidencia:
+
+En lugar de devolver únicamente el texto `Incidencia recibida`, se modifica el `return` para mostrar al usuario los datos recibidos desde el formulario:
+
+```python
+return f"""
+<h2>Incidencia recibida correctamente</h2>
+<ul>
+    <li><strong>Nombre del alumno:</strong> {nombre}</li>
+    <li><strong>Email:</strong> {email}</li>
+    <li><strong>Tipo de incidencia:</strong> {tipo}</li>
+    <li><strong>Prioridad:</strong> {prioridad}</li>
+    <li><strong>Descripción:</strong> {descripcion}</li>
+</ul>
+<br>
+<a href="/">Volver al formulario</a>
+"""
+```
+
+De esta forma, después de enviar el formulario se muestra una confirmación con los datos introducidos y un enlace para volver al formulario.
+
+40. Comunicación entre Flask y MySQL:
+
+Se importa el conector de MySQL instalado anteriormente:
+
+```python
+import mysql.connector
+```
+
+Dentro de la ruta `/incidencia` se añade una conexión con la base de datos:
+
+```python
+try:
+    conexion = mysql.connector.connect(
+        host="localhost",
+        user="incidencias",
+        password="incidencias",
+        database="incidencias"
+    )
+
+    cursor = conexion.cursor()
+```
+
+Se utiliza un bloque `try-except-finally` para controlar posibles errores de la base de datos y asegurarse de que las conexiones se cierren correctamente.
+
+En caso de error:
+
+```python
+except mysql.connector.Error as error:
+    return f"<h2>Error al guardar en la base de datos: {error}</h2>"
+```
+
+Finalmente se cierran el cursor y la conexión:
+
+```python
+finally:
+    if 'cursor' in locals():
+        cursor.close()
+
+    if 'conexion' in locals() and conexion.is_connected():
+        conexion.close()
+```
+
+41. Error al intentar insertar la incidencia en MySQL:
+
+Inicialmente se intentó realizar la inserción sobre una tabla llamada `registros`:
+
+```python
+sql = """
+    INSERT INTO registros
+    (nombre, email, tipo, prioridad, descripcion, estado)
+    VALUES (%s, %s, %s, %s, %s, %s)
+"""
+```
+
+Al probar la aplicación se obtuvo el error:
+
+```text
+Error al guardar en la base de datos: 1146 (42S02): Table 'incidencias.registros' doesn't exist
+```
+
+El problema era que la tabla creada anteriormente se llama `registro`, no `registros`.
+
+Además, su estructura real es:
+
+```text
++----+---------+-----------------------+-----------+---------+
+| id | aula    | descripcion           | usuario   | estado  |
++----+---------+-----------------------+-----------+---------+
+|  1 | Taller1 | PC 24 no arranca      | ifpereira | ABIERTA |
+|  2 | Taller2 | Monitor 2 no funciona | isfariña  | ABIERTA |
++----+---------+-----------------------+-----------+---------+
+```
+
+Por lo tanto, también era necesario adaptar el `INSERT` a las columnas que realmente existen en la tabla.
+
+El código corregido queda:
+
+```python
+sql = """
+    INSERT INTO registro
+    (aula, descripcion, usuario, estado)
+    VALUES (%s, %s, %s, %s)
+"""
+
+valores = (
+    aula,
+    descripcion,
+    usuario,
+    "ABIERTA"
+)
+```
+
+La inserción se ejecuta y se confirma mediante:
+
+```python
+cursor.execute(sql, valores)
+conexion.commit()
+```
+
+42. Resolución del desajuste entre frontend, backend y base de datos:
+
+El problema principal era que los datos enviados por el formulario HTML, las variables recogidas por Flask y las columnas disponibles en MySQL no coincidían completamente.
+
+Se realizaron los siguientes cambios:
+
+- En el formulario HTML se configuró correctamente:
+
+```html
+<form action="/incidencia" method="post">
+```
+
+- Se añadió el campo `aula`:
+
+```html
+<select id="aula" name="aula">
+    <option value="taller1">Taller1</option>
+    <option value="taller2">Taller2</option>
+    <option value="taller3">Taller3</option>
+    <option value="taller4">Taller4</option>
+</select>
+```
+
+- El campo que inicialmente se llamaba `nombre` pasó a llamarse `usuario` tanto en el frontend como en el backend:
+
+```html
+<input type="text" id="usuario" name="usuario" required>
+```
+
+```python
+usuario = request.form["usuario"]
+```
+
+- La aplicación recibe actualmente los siguientes datos:
+
+```text
+usuario
+email
+aula
+tipo
+prioridad
+descripcion
+```
+
+- La tabla `registro` almacena:
+
+```text
+aula
+descripcion
+usuario
+estado
+```
+
+Por este motivo, `email`, `tipo` y `prioridad` se utilizan para mostrar la información en la respuesta web, pero no se almacenan actualmente en la tabla `registro`.
+
+43. Estado actual del formulario `index.html`:
+
+```html
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formulario de incidencias</title>
+</head>
+
+<body>
+
+    <h1>Formulario de incidencias</h1>
+
+    <form action="/incidencia" method="post">
+
+        <label for="usuario">Usuario:</label><br>
+        <input type="text" id="usuario" name="usuario" required>
+
+        <br><br>
+
+        <label for="email">Correo electrónico:</label><br>
+        <input type="email" id="email" name="email" required>
+
+        <br><br>
+
+        <label for="tipo">Aula:</label><br>
+        <select id="aula" name="aula">
+            <option value="taller1">Taller1</option>
+            <option value="taller2">Taller2</option>
+            <option value="taller3">Taller3</option>
+            <option value="taller4">Taller4</option>
+        </select>
+
+        <br><br>
+
+        <label for="tipo">Tipo de incidencia:</label><br>
+        <select id="tipo" name="tipo">
+            <option value="hardware">Hardware</option>
+            <option value="software">Software</option>
+            <option value="red">Red</option>
+            <option value="otro">Otro</option>
+        </select>
+
+        <br><br>
+
+        <label for="prioridad">Prioridad:</label><br>
+        <select id="prioridad" name="prioridad">
+            <option value="baja">Baja</option>
+            <option value="media">Media</option>
+            <option value="alta">Alta</option>
+        </select>
+
+        <br><br>
+
+        <label for="descripcion">Descripción de la incidencia:</label><br>
+        <textarea id="descripcion" name="descripcion" rows="6" cols="40" required></textarea>
+
+        <br><br>
+
+        <input type="submit" value="Enviar incidencia">
+
+    </form>
+
+</body>
+
+</html>
+```
+
+44. Estado actual de `app.py`:
+
+```python
+from flask import Flask, render_template, request
+import mysql.connector
+
+app = Flask(__name__)
+
+@app.route("/")
+def inicio():
+    return render_template("index.html")
+
+@app.route("/incidencia", methods=["POST"])
+def crear_incidencia():
+    usuario = request.form["usuario"]
+    email = request.form["email"]
+    aula = request.form["aula"]
+    tipo = request.form["tipo"]
+    prioridad = request.form["prioridad"]
+    descripcion = request.form["descripcion"]
+
+    try:
+        conexion = mysql.connector.connect(
+            host="localhost",
+            user="incidencias",
+            password="incidencias",
+            database="incidencias"
+        )
+
+        cursor = conexion.cursor()
+
+        sql = """
+            INSERT INTO registro
+            (aula, descripcion, usuario, estado)
+            VALUES (%s, %s, %s, %s)
+        """
+
+        valores = (
+            aula,
+            descripcion,
+            usuario,
+            "ABIERTA"
+        )
+
+        cursor.execute(sql, valores)
+        conexion.commit()
+
+    except mysql.connector.Error as error:
+        return f"<h2>Error al guardar en la base de datos: {error}</h2>"
+
+    finally:
+        if 'cursor' in locals():
+            cursor.close()
+
+        if 'conexion' in locals() and conexion.is_connected():
+            conexion.close()
+
+    return f"""
+    <h2>Incidencia recibida correctamente</h2>
+    <ul>
+        <li><strong>Usuario del alumno:</strong> {usuario}</li>
+        <li><strong>Email:</strong> {email}</li>
+        <li><strong>Tipo de incidencia:</strong> {tipo}</li>
+        <li><strong>Prioridad:</strong> {prioridad}</li>
+        <li><strong>Descripción:</strong> {descripcion}</li>
+    </ul>
+    <br>
+    <a href="/">Volver al formulario</a>
+    """
+
+if __name__ == "__main__":
+    app.run(debug=True)
+```
+
+Con esta versión, Flask recibe los datos del formulario, guarda en MySQL los campos compatibles con la tabla `registro`, confirma la transacción mediante `commit()` y cierra el cursor y la conexión tanto si la operación termina correctamente como si se produce un error.
+
+Los campos `email`, `tipo` y `prioridad` siguen formando parte del formulario y de la respuesta mostrada al usuario, pero no se guardan actualmente en la tabla `registro`.
+
+45. Cambio definitivo de `nombre` a `usuario`:
+
+El cambio se aplicó finalmente tanto en el frontend como en el backend.
+
+En `index.html`:
+
+```html
+<label for="usuario">Usuario:</label><br>
+<input type="text" id="usuario" name="usuario" required>
+```
+
+En `app.py`:
+
+```python
+usuario = request.form["usuario"]
+```
+
+De esta forma, el atributo `name` enviado por el formulario coincide con la clave que Flask busca mediante `request.form`, eliminando el desajuste anterior entre `nombre` y `usuario`.
+
+46. Pequeños ajustes detectados en el código actual:
+
+En el formulario, la etiqueta del campo `aula` contiene actualmente:
+
+```html
+<label for="tipo">Aula:</label>
+```
+
+mientras que el elemento asociado utiliza:
+
+```html
+<select id="aula" name="aula">
+```
+
+Para que la etiqueta quede correctamente asociada al campo, debería utilizarse:
+
+```html
+<label for="aula">Aula:</label>
+```
+
+También queda desactualizado en `app.py` el comentario que indica:
+
+```python
+# 2. Corregido: 6 columnas y 6 parámetros %s
+```
+
+El `INSERT` actual utiliza realmente 4 columnas y 4 parámetros:
+
+```python
+INSERT INTO registro
+(aula, descripcion, usuario, estado)
+VALUES (%s, %s, %s, %s)
+```
+
+Estos dos puntos no afectan a la lógica principal documentada, pero conviene corregirlos para que el código quede coherente con su estado actual.
